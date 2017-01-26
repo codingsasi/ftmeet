@@ -1,0 +1,10 @@
+<?php
+
+/**
+ * @file
+ * The module file for ftmeet.
+ */
+
+function ftmeet_init() {
+  drupal_add_css(drupal_get_path('module', 'ftmeet') . '/css/ftmeet.css', array('group' => CSS_DEFAULT, 'every_page' => TRUE));
+}

@@ -1,0 +1,9 @@
+name = ftmeet
+description = "Provides custom stypes, types and config for ftmeet.com"
+package = Custom
+core = 7.x
+configure = admin/config/administration/ftmeet
+
+; Always available CSS
+stylesheets[all][] = css/ftmeet.css
+

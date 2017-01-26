@@ -1,0 +1,8 @@
+/**
+ * @file
+ * Custom css style rules for
+ */
+
+li.translation_ml, li.translation_en {
+  float: right;
+}
