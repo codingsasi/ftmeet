@@ -1,0 +1,72 @@
+<?php
+
+/**
+ * @file
+ * Provides SumoMe tools integration
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function sumome_menu() {
+  $items = array();
+
+  $items['admin/config/services/sumome'] = array(
+    'title' => 'SumoMe Tools Integration',
+    'description' => 'Set up your SumoMe tools.',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('sumome_settings_form'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+function sumome_settings_form($form, &$form_state) {
+  $form = array();
+
+  $site_id = variable_get('sumome_site_id', '');
+
+  $form['sumome_site_id'] = array(
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#title' => t('Data Sumo Site ID'),
+    '#description' => t('Enter the entire string of numbers and letters after data-sumo-site-id= in the HTML Code you
+    were givin on the SumoMe.com website. Do not include the beginning and ending quotes.'),
+    '#default_value' => $site_id,
+  );
+
+  $form['sumome_markup'] = array(
+    '#markup' => '<strong>How to find your Data Sumo Site ID:</strong>
+    <ul>
+    <li>Follow the Instructions on the SumoMe.com website for Standard Websites to Get the HTML Code </li>
+    <li>Copy and Paste the string inside the data-sumo-site-id="" attribute.</li>
+    </ul>
+    <br /><img src="/' . drupal_get_path('module', 'sumome') . '/SumoMe.jpg" alt="Image showing were to get the string.">',
+  );
+  
+  return system_settings_form($form);
+}
+  
+/**
+ * Implements hook_init().
+ */
+function sumome_init() {
+  $site_id = variable_get('sumome_site_id', '');
+
+  if (arg(0) != "admin") {
+    $element = array(
+      '#tag' => 'script',
+      '#attributes' => array(
+        'type' => 'text/javascript',
+        'src' => '//load.sumome.com/',
+        'data-sumo-site-id' => $site_id,
+        'async' => 'async',
+      ),
+      '#suffix' => '</script>',
+    );
+    drupal_add_html_head($element, 'sumome_script_tag');
+  }
+}
