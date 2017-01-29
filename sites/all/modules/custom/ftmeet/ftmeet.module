@@ -8,3 +8,94 @@
 function ftmeet_init() {
   drupal_add_css(drupal_get_path('module', 'ftmeet') . '/css/ftmeet.css', array('group' => CSS_DEFAULT, 'every_page' => TRUE));
 }
+
+/**
+ * Implements hook_menu()
+ */
+function ftmeet_menu() {
+  $items = array();
+  $items['speaker/%user'] = array(
+    'page callback' => 'ftmeet_speaker_callback',
+    'page arguments' => array(1),
+    'access callback' => 'ftmeet_speaker_access_callback',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Access callback for speaker/%user.
+ *
+ * Function to check if user exists in system.
+ *
+ * @param  object $user
+ *   User object
+ * @return bool
+ *   TRUE if access is allowed, else FALSE.
+ */
+function ftmeet_speaker_access_callback($user) {
+  if (isset($user)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Callback function for speaker/%user.
+ *
+ * @param  object $user
+ *   The user object of the speaker.
+ * @return array $page
+ *   A renderable array of output.
+ */
+function ftmeet_speaker_callback($user) {
+
+  $profile = profile2_load_by_user($user->uid, 'main');
+
+  $lang = field_language('profile2', $profile, 'field_full_name');
+  $speaker['full_name'] = $profile->field_full_name[$lang][0]['value'];
+  drupal_set_title($profile->field_full_name[$lang][0]['value']);
+
+  $lang = field_language('profile2', $profile, 'field_description');
+  $speaker['description'] = $profile->field_description[$lang][0]['value'];
+
+  $lang = field_language('profile2', $profile, 'field_facebook_profile');
+  $speaker['facebook'] = l($profile->field_facebook_profile[$lang][0]['title'], $profile->field_facebook_profile[$lang][0]['url'], array('attributes' => array('target'=>'_blank')));
+
+  $lang = field_language('profile2', $profile, 'field_profile_image');
+  $speaker['image'] = $profile->field_profile_image[$lang][0]['uri'];
+
+  $page['#theme'] = 'ftmeet_speaker';
+  $page = array(
+    '#theme' => 'ftmeet_speaker',
+    '#speaker' => $speaker,
+  );
+
+  return $page;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function ftmeet_theme() {
+  return array(
+    'ftmeet_speaker' => array(
+      'variables' => array(
+        'speaker' => 'speaker',
+      ),
+      'template' => 'templates/ftmeet-speaker',
+    ),
+    'node__session' => array(
+      'render element' => 'content',
+      'base hook' => 'node',
+      'template' => 'templates/node--session',
+    )
+  );
+}
+
+function ftmeet_preprocess_node(&$variables) {
+  $profile = profile2_load_by_user($variables['field_speaker'][0]['user']->uid, 'main');
+  $lang = field_language('profile2', $profile, 'field_full_name');
+  $variables['full_name'] = $profile->field_full_name[$lang][0]['value'];
+}

@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Session and Speaker type feature.
+ */
+
+include_once 'session_and_speaker_type.features.inc';
