@@ -95,7 +95,10 @@ function ftmeet_theme() {
 }
 
 function ftmeet_preprocess_node(&$variables) {
-  $profile = profile2_load_by_user($variables['field_speaker'][0]['user']->uid, 'main');
-  $lang = field_language('profile2', $profile, 'field_full_name');
-  $variables['full_name'] = $profile->field_full_name[$lang][0]['value'];
+  dpm($variables);
+  if (isset($variables['type']) && $variables['type'] === 'session') {
+    $profile = profile2_load_by_user($variables['field_speaker'][0]['user']->uid, 'main');
+    $lang = field_language('profile2', $profile, 'field_full_name');
+    $variables['full_name'] = $profile->field_full_name[$lang][0]['value'];
+  }
 }
