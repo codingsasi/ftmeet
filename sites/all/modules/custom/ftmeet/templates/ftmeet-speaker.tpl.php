@@ -5,7 +5,9 @@
 ?>
 
 <div>
-<div><img src="<?php print file_create_url($speaker['image']); ?>" width="100%"/></div>
-<p><?php print $speaker['description']; ?></p>
-<h4><?php print $speaker['facebook']; ?></h4>
+  <div class="speaker-image">
+    <img src="<?php print file_create_url($speaker['image']); ?>" width="100%"/>
+  </div>
+  <p class="speaker-description"><?php print $speaker['description']; ?></p>
+  <h4 class="speaker-facebook"><?php print $speaker['facebook']; ?></h4>
 </div>

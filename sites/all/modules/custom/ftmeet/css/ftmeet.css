@@ -19,3 +19,22 @@ li.translation_ml, li.translation_en {
 .view-id-speakers tbody > tr > td a img {
   border-radius: 10px;
 }
+
+p.speaker-description {
+  padding: 3% 0;
+  border-radius: 10px;
+  text-align: justify;
+  line-height: 30px;
+}
+div.speaker-image {
+  border-radius: 10px;
+}
+div.speaker-image img {
+  border-radius: 10px;
+  border: 1px solid #e1e1e1;
+}
+h4.speaker-facebook a{
+  background: #eee;
+  padding: 10px;
+  border-radius: 5px;
+}

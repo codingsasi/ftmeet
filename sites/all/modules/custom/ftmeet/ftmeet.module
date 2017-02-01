@@ -54,17 +54,19 @@ function ftmeet_speaker_callback($user) {
   $profile = profile2_load_by_user($user->uid, 'main');
 
   $lang = field_language('profile2', $profile, 'field_full_name');
-  $speaker['full_name'] = $profile->field_full_name[$lang][0]['value'];
-  drupal_set_title($profile->field_full_name[$lang][0]['value']);
+  $speaker['full_name'] = ($profile->field_full_name[$lang][0]['value']) ? $profile->field_full_name[$lang][0]['value'] : '';
+  drupal_set_title($speaker['full_name']);
 
   $lang = field_language('profile2', $profile, 'field_description');
-  $speaker['description'] = $profile->field_description[$lang][0]['value'];
+  $speaker['description'] = ($profile->field_description) ? $profile->field_description[$lang][0]['value'] : '';
 
   $lang = field_language('profile2', $profile, 'field_facebook_profile');
-  $speaker['facebook'] = l($profile->field_facebook_profile[$lang][0]['title'], $profile->field_facebook_profile[$lang][0]['url'], array('attributes' => array('target'=>'_blank')));
+  $facebook_title = ($profile->field_facebook_profile) ? $profile->field_facebook_profile[$lang][0]['title'] : '';
+  $facebook_link = ($profile->field_facebook_profile) ? $profile->field_facebook_profile[$lang][0]['url'] : '';
+  $speaker['facebook'] = l($facebook_title, $facebook_link, array('attributes' => array('target'=>'_blank')));
 
   $lang = field_language('profile2', $profile, 'field_profile_image');
-  $speaker['image'] = $profile->field_profile_image[$lang][0]['uri'];
+  $speaker['image'] = ($profile->field_profile_image) ? $profile->field_profile_image[$lang][0]['uri'] : '';
 
   $page['#theme'] = 'ftmeet_speaker';
   $page = array(
@@ -92,12 +94,4 @@ function ftmeet_theme() {
       'template' => 'templates/node--session',
     )
   );
-}
-
-function ftmeet_preprocess_node(&$variables) {
-  if (isset($variables['type']) && $variables['type'] === 'session') {
-    $profile = profile2_load_by_user($variables['field_speaker'][0]['user']->uid, 'main');
-    $lang = field_language('profile2', $profile, 'field_full_name');
-    $variables['full_name'] = $profile->field_full_name[$lang][0]['value'];
-  }
 }
