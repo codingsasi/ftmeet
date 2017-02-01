@@ -69,7 +69,7 @@
     <div class="row">
       <div id="logo" class="site-branding col-sm-6" width="64" height="64">
         <?php if ($logo): ?><div id="site-logo"><a href="<?php print $front_page; ?>" title="<?php print t('Home'); ?>">
-          <img src="<?php print $logo; ?>" alt="<?php print t('Home'); ?>" width="64" height="64" />
+          <img src="<?php print $logo; ?>" alt="<?php print t('Home'); ?>" width="96" height="96" />
         </a></div><?php endif; ?>
         <h1 id="site-title">
           <a href="<?php print $front_page; ?>" title="<?php print t('Home'); ?>"><?php print $site_name; ?></a>
