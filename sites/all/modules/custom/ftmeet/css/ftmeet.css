@@ -6,3 +6,16 @@
 li.translation_ml, li.translation_en {
   float: right;
 }
+
+.view-id-speakers table,
+.view-id-speakers tbody,
+.view-id-speakers tr,
+.view-id-speakers td {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+}
+.view-id-speakers tbody > tr > td a img {
+  border-radius: 10px;
+}
