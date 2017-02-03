@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Article and Page Mods feature.
+ */
+
+include_once 'article_and_page_mods.features.inc';
