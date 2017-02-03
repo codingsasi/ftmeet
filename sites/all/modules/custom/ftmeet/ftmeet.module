@@ -21,6 +21,13 @@ function ftmeet_menu() {
     'access arguments' => array(1),
     'type' => MENU_CALLBACK,
   );
+  $items['profile/%user'] = array(
+    'page callback' => 'ftmeet_profile_callback',
+    'page arguments' => array(1),
+    'access callback' => 'ftmeet_profile_access_callback',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -35,7 +42,7 @@ function ftmeet_menu() {
  *   TRUE if access is allowed, else FALSE.
  */
 function ftmeet_speaker_access_callback($user) {
-  if (isset($user)) {
+  if (isset($user) && in_array('speaker', $user->roles)) {
     return TRUE;
   }
   return FALSE;
@@ -50,6 +57,59 @@ function ftmeet_speaker_access_callback($user) {
  *   A renderable array of output.
  */
 function ftmeet_speaker_callback($user) {
+
+  $profile = profile2_load_by_user($user->uid, 'main');
+
+  $lang = field_language('profile2', $profile, 'field_full_name');
+  $speaker['full_name'] = ($profile->field_full_name[$lang][0]['value']) ? $profile->field_full_name[$lang][0]['value'] : '';
+  drupal_set_title($speaker['full_name']);
+
+  $lang = field_language('profile2', $profile, 'field_description');
+  $speaker['description'] = ($profile->field_description) ? $profile->field_description[$lang][0]['value'] : '';
+
+  $lang = field_language('profile2', $profile, 'field_facebook_profile');
+  $facebook_title = ($profile->field_facebook_profile) ? $profile->field_facebook_profile[$lang][0]['title'] : '';
+  $facebook_link = ($profile->field_facebook_profile) ? $profile->field_facebook_profile[$lang][0]['url'] : '';
+  $speaker['facebook'] = l($facebook_title, $facebook_link, array('attributes' => array('target'=>'_blank')));
+
+  $lang = field_language('profile2', $profile, 'field_profile_image');
+  $speaker['image'] = ($profile->field_profile_image) ? $profile->field_profile_image[$lang][0]['uri'] : '';
+
+  $page['#theme'] = 'ftmeet_speaker';
+  $page = array(
+    '#theme' => 'ftmeet_speaker',
+    '#speaker' => $speaker,
+  );
+
+  return $page;
+}
+
+/**
+ * Access callback for profile/%user.
+ *
+ * Function to check if user exists in system.
+ *
+ * @param  object $user
+ *   User object
+ * @return bool
+ *   TRUE if access is allowed, else FALSE.
+ */
+function ftmeet_profile_access_callback($user) {
+  if (isset($user) && !in_array('speaker', $user->roles)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Callback function for profile/%user.
+ *
+ * @param  object $user
+ *   The user object of the speaker.
+ * @return array $page
+ *   A renderable array of output.
+ */
+function ftmeet_profile_callback($user) {
 
   $profile = profile2_load_by_user($user->uid, 'main');
 
