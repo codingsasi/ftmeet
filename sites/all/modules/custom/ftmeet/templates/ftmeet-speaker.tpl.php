@@ -9,5 +9,7 @@
     <img src="<?php print file_create_url($speaker['image']); ?>" width="100%"/>
   </div>
   <p class="speaker-description"><?php print $speaker['description']; ?></p>
-  <h4 class="speaker-facebook"><?php print $speaker['facebook']; ?></h4>
+  <?php if ($speaker['facebook']): ?>
+    <h4 class="speaker-facebook"><?php print $speaker['facebook']; ?></h4>
+  <?php endif ?>
 </div>
