@@ -38,3 +38,6 @@ h4.speaker-facebook a{
   padding: 10px;
   border-radius: 5px;
 }
+h3 > span.session-speaker-label {
+  font-size: small;
+}

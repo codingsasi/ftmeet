@@ -35,7 +35,7 @@
       hide($content['comments']);
       hide($content['links']);
       hide($content['field_speaker']); ?>
-      <h3><span>Speaker: </span><strong><?php print $full_name; ?></strong></h3>
+      <h3><span class="session-speaker-label">Speaker: </span><strong><?php print $full_name; ?></strong></h3>
       <?php print render($content);?>
   </div>
 
