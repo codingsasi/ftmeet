@@ -41,3 +41,8 @@ h4.speaker-facebook a{
 h3 > span.session-speaker-label {
   font-size: small;
 }
+div#main-menu > ul > li.last.leaf > a{
+  background: #3b5998;
+  color: white;
+  font-weight: bolder;
+}
