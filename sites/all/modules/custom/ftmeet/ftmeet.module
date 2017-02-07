@@ -173,3 +173,13 @@ function ftmeet_preprocess_node(&$variables) {
     }
   }
 }
+
+/**
+ * Implements hook_page_alter().
+ */
+function ftmeet_page_alter(&$page) {
+  global $user;
+  if (arg(0) == 'user' || arg(0) == 'user#_=_') {
+    drupal_goto('profile/' . $user->uid);
+  }
+}
