@@ -156,6 +156,9 @@ function ftmeet_theme() {
   );
 }
 
+/**
+ * Implements hook_preprocess_node().
+ */
 function ftmeet_preprocess_node(&$variables) {
   if (isset($variables['type']) && $variables['type'] === 'session') {
     if ($variables['view_mode'] == 'full') {
@@ -168,5 +171,15 @@ function ftmeet_preprocess_node(&$variables) {
       $lang = field_language('profile2', $profile, 'field_full_name');
       $variables['full_name'] = $profile->field_full_name[$lang][0]['value'];
     }
+  }
+}
+
+/**
+ * Implements hook_page_alter().
+ */
+function ftmeet_page_alter(&$page) {
+  global $user;
+  if (current_path() == 'user') {
+    drupal_goto('profile/' . $user->uid);
   }
 }
