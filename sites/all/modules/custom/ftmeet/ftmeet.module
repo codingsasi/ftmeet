@@ -98,6 +98,9 @@ function ftmeet_profile_access_callback($user) {
   if (isset($user) && !in_array('speaker', $user->roles)) {
     return TRUE;
   }
+  elseif (isset($user) && in_array('speaker', $user->roles)) {
+    drupal_goto('speaker/' . $user->uid);
+  }
   return FALSE;
 }
 
