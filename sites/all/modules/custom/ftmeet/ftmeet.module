@@ -185,7 +185,7 @@ function ftmeet_page_alter(&$page) {
   $arg0 = arg(0);
   $arg1 = arg(1);
   $arg2 = arg(2);
-  if ($arg0 === 'user' && is_numeric($arg1) && $arg2 === '') {
+  if ($arg0 == 'user' && is_numeric($arg1) && $arg2 == '') {
     drupal_goto('profile/' . $user->uid);
   }
 }
