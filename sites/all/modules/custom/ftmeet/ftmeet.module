@@ -179,7 +179,7 @@ function ftmeet_preprocess_node(&$variables) {
  */
 function ftmeet_page_alter(&$page) {
   global $user;
-  if (current_path() == 'user' || current_path() == 'user#_=_') {
+  if (  drupal_get_path_alias(current_path()) == 'user' || drupal_get_path_alias(current_path()) == 'user#_=_') {
     drupal_goto('profile/' . $user->uid);
   }
 }
