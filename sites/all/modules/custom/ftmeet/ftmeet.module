@@ -195,6 +195,6 @@ function ftmeet_user_login($account) {
   dpm($user);
   $profile = profile2_create(array('type' => 'main', 'uid' => $account['uid']));
   $profile->field_full_name[LANGUAGE_NONE][0]['value'] = $user->name;
-  //$profile->field_profile_image = $user->picture;
+  $profile->field_profile_image[LANGUAGE_NONE][0] = $user->picture;
   profile2_save($profile);
 }
