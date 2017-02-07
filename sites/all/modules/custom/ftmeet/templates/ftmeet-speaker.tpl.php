@@ -12,9 +12,8 @@
   <hr>
   <?php print $speaker['description']; ?>
   <br>
-  <hr>
-  <br>
   <?php if ($speaker['facebook']): ?>
     <h4 class="speaker-facebook"><?php print $speaker['facebook']; ?></h4>
   <?php endif ?>
+  <br>
 </div>
