@@ -191,8 +191,9 @@ function ftmeet_page_alter(&$page) {
  * Implements_hook_user_login().
  */
 function ftmeet_user_login($account) {
+  $user = user_load($account->uid)
   $profile = profile2_create(array('type' => 'main', 'uid' => $account->uid));
-  $profile->field_full_name[LANGUAGE_NONE][0]['value'] = $account->name;
-  $profile->field_profile_image = $account->picture;
+  $profile->field_full_name[LANGUAGE_NONE][0]['value'] = $user->name;
+  $profile->field_profile_image = $user->picture;
   profile2_save($profile);
 }
