@@ -115,7 +115,7 @@ function ftmeet_profile_callback($user) {
 
   $lang = field_language('profile2', $profile, 'field_full_name');
   $speaker['full_name'] = ($profile->field_full_name[$lang][0]['value']) ? $profile->field_full_name[$lang][0]['value'] : '';
-  drupal_set_title($speaker['full_name']);
+  ($speaker['full_name'] != '' ) ? drupal_set_title($speaker['full_name']) : drupal_set_title($user->name);
 
   $lang = field_language('profile2', $profile, 'field_description');
   $speaker['description'] = ($profile->field_description) ? $profile->field_description[$lang][0]['value'] : '';
