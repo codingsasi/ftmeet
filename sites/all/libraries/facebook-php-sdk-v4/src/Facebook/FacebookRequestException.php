@@ -29,7 +29,7 @@ namespace Facebook;
  * @author Fosco Marotto <fjm@fb.com>
  * @author David Poll <depoll@fb.com>
  */
-class FacebookRequestException extends \Exception
+class FacebookRequestException extends FacebookSDKException
 {
 
   /**
@@ -80,38 +80,71 @@ class FacebookRequestException extends \Exception
     if (!isset($data['error']['code']) && isset($data['code'])) {
       $data = array('error' => $data);
     }
-    $code = (isset($data['error']['code']) ? $data['error']['code'] : null);
+    $code = (isset($data['error']['code']) ? (int) $data['error']['code'] : null);
 
-    // Login status or token expired, revoked, or invalid
-    if ($code == 102 || $code == 190 || $code == 100) {
-      return new FacebookAuthorizationException($raw, $data, $statusCode);
+    if (isset($data['error']['error_subcode'])) {
+      switch ($data['error']['error_subcode']) {
+        // Other authentication issues
+        case 458:
+        case 459:
+        case 460:
+        case 463:
+        case 464:
+        case 467:
+          return new FacebookAuthorizationException($raw, $data, $statusCode);
+          break;
+      }
     }
 
-    // Server issue, possible downtime
-    if ($code == 1 || $code == 2) {
-      return new FacebookServerException($raw, $data, $statusCode);
-    }
+    switch ($code) {
+      // Login status or token expired, revoked, or invalid
+      case 100:
+      case 102:
+      case 190:
+        return new FacebookAuthorizationException($raw, $data, $statusCode);
+        break;
 
-    // API Throttling
-    if ($code == 4 || $code == 17 || $code == 341) {
-      return new FacebookThrottleException($raw, $data, $statusCode);
+      // Server issue, possible downtime
+      case 1:
+      case 2:
+        return new FacebookServerException($raw, $data, $statusCode);
+        break;
+
+      // API Throttling
+      case 4:
+      case 17:
+      case 341:
+        return new FacebookThrottleException($raw, $data, $statusCode);
+        break;
+
+      // Duplicate Post
+      case 506:
+        return new FacebookClientException($raw, $data, $statusCode);
+        break;
     }
 
     // Missing Permissions
-    if ($code == 10 || ($code >= 200 && $code <= 299)) {
+    if ($code === 10 || ($code >= 200 && $code <= 299)) {
       return new FacebookPermissionException($raw, $data, $statusCode);
     }
 
-    // Duplicate Post
-    if ($code == 506) {
-      return new FacebookClientException($raw, $data, $statusCode);
+    // OAuth authentication error
+    if (isset($data['error']['type'])
+      and $data['error']['type'] === 'OAuthException') {
+      return new FacebookAuthorizationException($raw, $data, $statusCode);
     }
+
     // All others
     return new FacebookOtherException($raw, $data, $statusCode);
   }
 
   /**
    * Checks isset and returns that or a default value.
+   *
+   * @param string $key
+   * @param mixed $default
+   *
+   * @return mixed
    */
   private function get($key, $default = null)
   {
@@ -128,7 +161,6 @@ class FacebookRequestException extends \Exception
    */
   public function getHttpStatusCode()
   {
-
     return $this->statusCode;
   }
 
@@ -164,12 +196,21 @@ class FacebookRequestException extends \Exception
 
   /**
    * Returns the decoded response used to create the exception.
+   *
+   * @return array
    */
   public function getResponse()
   {
     return $this->responseData;
   }
 
+  /**
+   * Converts a stdClass object to an array
+   *
+   * @param mixed $object
+   *
+   * @return array
+   */
   private static function convertToArray($object)
   {
     if ($object instanceof \stdClass) {

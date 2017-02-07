@@ -4,18 +4,18 @@ use Facebook\FacebookSession;
 use Facebook\FacebookRequest;
 use Facebook\FacebookSDKException;
 
-require('FacebookTestCredentials.php');
-
 class FacebookTestHelper
 {
 
   public static $testSession;
+  public static $testUserId;
+  public static $testUserAccessToken;
+  public static $testUserPermissions = array('read_stream', 'user_photos');
 
-  public static function setUpBeforeClass()
+  public static function initialize()
   {
     if (!strlen(FacebookTestCredentials::$appId) ||
-      !strlen(FacebookTestCredentials::$appSecret) ||
-      !strlen(FacebookTestCredentials::$appToken)) {
+      !strlen(FacebookTestCredentials::$appSecret)) {
       throw new FacebookSDKException(
         'You must fill out FacebookTestCredentials.php'
       );
@@ -23,42 +23,52 @@ class FacebookTestHelper
     FacebookSession::setDefaultApplication(
       FacebookTestCredentials::$appId, FacebookTestCredentials::$appSecret
     );
-    if (!(static::$testSession instanceof FacebookSession)) {
+    if (!static::$testSession instanceof FacebookSession) {
       static::$testSession = static::createTestSession();
     }
   }
 
-  public static function setUp()
-  {
-
-  }
-
-  public static function tearDownAfterClass()
-  {
-
-  }
-
-  public static function tearDown()
-  {
-
-  }
-
   public static function createTestSession()
+  {
+    static::createTestUserAndGetAccessToken();
+    return new FacebookSession(static::$testUserAccessToken);
+  }
+
+  public static function createTestUserAndGetAccessToken()
   {
     $testUserPath = '/' . FacebookTestCredentials::$appId . '/accounts/test-users';
     $params = array(
       'installed' => true,
-      'name' => 'PHPUnitTestUser',
+      'name' => 'Foo Phpunit User',
       'locale' => 'en_US',
-      'permissions' => 'read_stream',
-      'method' => 'post'
+      'permissions' => implode(',', static::$testUserPermissions),
     );
-    $response = (new FacebookRequest(
-      new FacebookSession(FacebookTestCredentials::$appToken),
-      'GET',
-      $testUserPath,
-      $params))->execute()->getGraphObject();
-    return new FacebookSession($response->getProperty('access_token'));
+
+    $request = new FacebookRequest(static::getAppSession(), 'POST', $testUserPath, $params);
+    $response = $request->execute()->getGraphObject();
+
+    static::$testUserId = $response->getProperty('id');
+    static::$testUserAccessToken = $response->getProperty('access_token');
+  }
+
+  public static function getAppSession()
+  {
+    return new FacebookSession(static::getAppToken());
+  }
+
+  public static function getAppToken()
+  {
+    return FacebookTestCredentials::$appId . '|' . FacebookTestCredentials::$appSecret;
+  }
+
+  public static function deleteTestUser()
+  {
+    if (!static::$testUserId) {
+      return;
+    }
+    $testUserPath = '/' . static::$testUserId;
+    $request = new FacebookRequest(static::getAppSession(), 'DELETE', $testUserPath);
+    $request->execute();
   }
 
 }

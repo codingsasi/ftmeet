@@ -23,6 +23,10 @@
  */
 namespace Facebook;
 
+use Facebook\HttpClients\FacebookHttpable;
+use Facebook\HttpClients\FacebookCurlHttpClient;
+use Facebook\HttpClients\FacebookStreamHttpClient;
+
 /**
  * Class FacebookRequest
  * @package Facebook
@@ -35,17 +39,12 @@ class FacebookRequest
   /**
    * @const string Version number of the Facebook PHP SDK.
    */
-  const VERSION = '4.0.0';
+  const VERSION = '4.0.23';
 
   /**
    * @const string Default Graph API version for requests
    */
-  const GRAPH_API_VERSION = 'v2.0';
-
-  /**
-   * @const string Signed Request Algorithm
-   */
-  const SIGNED_REQUEST_ALGORITHM = 'HMAC-SHA256';
+  const GRAPH_API_VERSION = 'v2.3';
 
   /**
    * @const string Graph API URL
@@ -53,9 +52,9 @@ class FacebookRequest
   const BASE_GRAPH_URL = 'https://graph.facebook.com';
 
   /**
-   * @var array Default options for CURL
+   * @const string Graph API URL
    */
-  private $curlOptions;
+  const BASE_VIDEO_GRAPH_URL = 'https://graph-video.facebook.com';
 
   /**
    * @var FacebookSession The session used for this request
@@ -81,6 +80,21 @@ class FacebookRequest
    * @var string The Graph API version for the request
    */
   private $version;
+
+  /**
+   * @var string ETag sent with the request
+   */
+  private $etag;
+
+  /**
+   * @var FacebookHttpable HTTP client handler
+   */
+  private static $httpClientHandler;
+
+  /**
+   * @var int The number of calls that have been made to Graph.
+   */
+  public static $requestCount = 0;
 
   /**
    * getSession - Returns the associated FacebookSession.
@@ -123,6 +137,41 @@ class FacebookRequest
   }
 
   /**
+   * getETag - Returns the ETag sent with the request.
+   *
+   * @return string
+   */
+  public function getETag()
+  {
+    return $this->etag;
+  }
+
+  /**
+   * setHttpClientHandler - Returns an instance of the HTTP client
+   * handler
+   *
+   * @param \Facebook\HttpClients\FacebookHttpable
+   */
+  public static function setHttpClientHandler(FacebookHttpable $handler)
+  {
+    static::$httpClientHandler = $handler;
+  }
+
+  /**
+   * getHttpClientHandler - Returns an instance of the HTTP client
+   * data handler
+   *
+   * @return FacebookHttpable
+   */
+  public static function getHttpClientHandler()
+  {
+    if (static::$httpClientHandler) {
+      return static::$httpClientHandler;
+    }
+    return function_exists('curl_init') ? new FacebookCurlHttpClient() : new FacebookStreamHttpClient();
+  }
+
+  /**
    * FacebookRequest - Returns a new request using the given session.  optional
    *   parameters hash will be sent with the request.  This object is
    *   immutable.
@@ -131,12 +180,13 @@ class FacebookRequest
    * @param string $method
    * @param string $path
    * @param array|null $parameters
-   *
-   * @return FacebookRequest
+   * @param string|null $version
+   * @param string|null $etag
    */
   public function __construct(
-    $session, $method, $path, $parameters = null, $version = null
-  ) {
+    FacebookSession $session, $method, $path, $parameters = null, $version = null, $etag = null
+  )
+  {
     $this->session = $session;
     $this->method = $method;
     $this->path = $path;
@@ -145,95 +195,131 @@ class FacebookRequest
     } else {
       $this->version = static::GRAPH_API_VERSION;
     }
+    $this->etag = $etag;
 
     $params = ($parameters ?: array());
-    if ($session) {
-      $params["access_token"] = $session->getToken();
+    if ($session
+      && ! isset($params['access_token'])) {
+      $params['access_token'] = $session->getToken();
+    }
+    if (! isset($params['appsecret_proof'])
+      && FacebookSession::useAppSecretProof()) {
+      $params['appsecret_proof'] = $this->getAppSecretProof(
+        $params['access_token']
+      );
     }
     $this->params = $params;
-    return $this;
   }
 
-  protected function getRequestURL() {
-    return static::BASE_GRAPH_URL . '/' . $this->version . $this->path;
+  /**
+   * Returns the base Graph URL.
+   *
+   * @return string
+   */
+  protected function getRequestURL()
+  {
+    $pathElements = explode('/', $this->path);
+    $lastInPath = end($pathElements);
+    if ($lastInPath == 'videos' && $this->method === 'POST') {
+      $baseUrl = static::BASE_VIDEO_GRAPH_URL;
+    } else {
+      $baseUrl = static::BASE_GRAPH_URL;
+    }
+    return $baseUrl . '/' . $this->version . $this->path;
   }
 
   /**
    * execute - Makes the request to Facebook and returns the result.
    *
    * @return FacebookResponse
+   *
+   * @throws FacebookSDKException
+   * @throws FacebookRequestException
    */
-  public function execute() {
+  public function execute()
+  {
     $url = $this->getRequestURL();
     $params = $this->getParameters();
-    $curl = curl_init();
-    $options = array(
-      CURLOPT_CONNECTTIMEOUT => 10,
-      CURLOPT_RETURNTRANSFER => true,
-      CURLOPT_TIMEOUT        => 60,
-      CURLOPT_ENCODING       => '', // Support all available encodings.
-      CURLOPT_USERAGENT      => 'fb-php-' . self::VERSION
-    );
-    if ($this->method === "GET") {
-      $url = $url . "?" . http_build_query($params);
-    } else {
-      $options[CURLOPT_POSTFIELDS] = $params;
-    }
-    $options[CURLOPT_URL] = $url;
-    curl_setopt_array($curl, $options);
 
-    $result = curl_exec($curl);
-    $error = curl_errno($curl);
-
-    if ($error == 60 || $error == 77) {
-      curl_setopt($curl, CURLOPT_CAINFO,
-        dirname(__FILE__) . DIRECTORY_SEPARATOR . 'fb_ca_chain_bundle.crt');
-      $result = curl_exec($curl);
-      $error = curl_errno($curl);
+    if ($this->method === 'GET') {
+      $url = self::appendParamsToUrl($url, $params);
+      $params = array();
     }
 
-    // With dual stacked DNS responses, it's possible for a server to
-    // have IPv6 enabled but not have IPv6 connectivity.  If this is
-    // the case, curl will try IPv4 first and if that fails, then it will
-    // fall back to IPv6 and the error EHOSTUNREACH is returned by the
-    // operating system.
-    if ($result === false && empty($opts[CURLOPT_IPRESOLVE])) {
-      $matches = array();
-      $regex = '/Failed to connect to ([^:].*): Network is unreachable/';
-      if (preg_match($regex, curl_error($curl), $matches)) {
-        if (strlen(@inet_pton($matches[1])) === 16) {
-          error_log(
-            'Invalid IPv6 configuration on server, ' .
-            'Please disable or get native IPv6 on your server.'
-          );
-          curl_setopt($curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-          $result = curl_exec($curl);
-          $error = curl_errno($curl);
-        }
-      }
+    $connection = self::getHttpClientHandler();
+    $connection->addRequestHeader('User-Agent', 'fb-php-' . self::VERSION);
+    $connection->addRequestHeader('Accept-Encoding', '*'); // Support all available encodings.
+
+    // ETag
+    if (null !== $this->etag) {
+      $connection->addRequestHeader('If-None-Match', $this->etag);
     }
 
-    $errorMessage = curl_error($curl);
-    $httpStatus = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    curl_close($curl);
+    // Should throw `FacebookSDKException` exception on HTTP client error.
+    // Don't catch to allow it to bubble up.
+    $result = $connection->send($url, $this->method, $params);
 
-    if ($result === false) {
-      throw new FacebookSDKException($errorMessage, $error);
-    }
+    static::$requestCount++;
+
+    $etagHit = 304 === $connection->getResponseHttpStatusCode();
+
+    $headers = $connection->getResponseHeaders();
+    $etagReceived = isset($headers['ETag']) ? $headers['ETag'] : null;
 
     $decodedResult = json_decode($result);
     if ($decodedResult === null) {
       $out = array();
       parse_str($result, $out);
-      return new FacebookResponse($this, $out, $result);
+      return new FacebookResponse($this, $out, $result, $etagHit, $etagReceived);
     }
     if (isset($decodedResult->error)) {
       throw FacebookRequestException::create(
-        $result, $decodedResult->error, $httpStatus
+        $result,
+        $decodedResult->error,
+        $connection->getResponseHttpStatusCode()
       );
     }
 
-    return new FacebookResponse($this, $decodedResult, $result);
+    return new FacebookResponse($this, $decodedResult, $result, $etagHit, $etagReceived);
+  }
+
+  /**
+   * Generate and return the appsecret_proof value for an access_token
+   *
+   * @param string $token
+   *
+   * @return string
+   */
+  public function getAppSecretProof($token)
+  {
+    return hash_hmac('sha256', $token, FacebookSession::_getTargetAppSecret());
+  }
+
+  /**
+   * appendParamsToUrl - Gracefully appends params to the URL.
+   *
+   * @param string $url
+   * @param array $params
+   *
+   * @return string
+   */
+  public static function appendParamsToUrl($url, array $params = array())
+  {
+    if (!$params) {
+      return $url;
+    }
+
+    if (strpos($url, '?') === false) {
+      return $url . '?' . http_build_query($params, null, '&');
+    }
+
+    list($path, $query_string) = explode('?', $url, 2);
+    parse_str($query_string, $query_array);
+
+    // Favor params from the original URL over $params
+    $params = array_merge($params, $query_array);
+
+    return $path . '?' . http_build_query($params, null, '&');
   }
 
 }

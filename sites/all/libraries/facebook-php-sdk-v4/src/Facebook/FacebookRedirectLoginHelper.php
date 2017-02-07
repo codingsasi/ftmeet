@@ -48,15 +48,19 @@ class FacebookRedirectLoginHelper
   private $redirectUrl;
 
   /**
-   * @var string State token for CSRF validation
-   */
-  private $state;
-
-  /**
    * @var string Prefix to use for session variables
    */
   private $sessionPrefix = 'FBRLH_';
 
+  /**
+   * @var string State token for CSRF validation
+   */
+  protected $state;
+
+  /**
+   * @var boolean Toggle for PHP session status check
+   */
+  protected $checkForSessionStatus = true;
 
   /**
    * Constructs a RedirectLoginHelper for a given appId and redirectUrl.
@@ -80,13 +84,16 @@ class FacebookRedirectLoginHelper
    *
    * @param array $scope List of permissions to request during login
    * @param string $version Optional Graph API version if not default (v2.0)
+   * @param boolean $displayAsPopup Indicate if the page will be displayed as a popup
+   * @param bool|string $authType 'reauthenticate' or 'https', true is equivalent to 'reauthenticate',
+   *                              false or invalid value will not add auth type parameter
    *
    * @return string
    */
-  public function getLoginUrl($scope = array(), $version = null)
+  public function getLoginUrl(array $scope = array(), $version = null, $displayAsPopup = false, $authType = false)
   {
     $version = ($version ?: FacebookRequest::GRAPH_API_VERSION);
-    $this->state = md5(uniqid(mt_rand(), true));
+    $this->state = $this->random(16);
     $this->storeState($this->state);
     $params = array(
       'client_id' => $this->appId,
@@ -95,8 +102,43 @@ class FacebookRedirectLoginHelper
       'sdk' => 'php-sdk-' . FacebookRequest::VERSION,
       'scope' => implode(',', $scope)
     );
+
+    if (in_array($authType, array(true, 'reauthenticate', 'https'), true)) {
+      $params['auth_type'] = $authType === true ? 'reauthenticate' : $authType;
+    }
+    
+    if ($displayAsPopup)
+    {
+      $params['display'] = 'popup';
+    }
+    
     return 'https://www.facebook.com/' . $version . '/dialog/oauth?' .
-      http_build_query($params);
+      http_build_query($params, null, '&');
+  }
+
+  /**
+   * Returns a URL to which the user should be sent to re-request permissions.
+   *
+   * @param array $scope List of permissions to re-request
+   * @param string $version Optional Graph API version if not default (v2.0)
+   *
+   * @return string
+   */
+  public function getReRequestUrl(array $scope = array(), $version = null)
+  {
+    $version = ($version ?: FacebookRequest::GRAPH_API_VERSION);
+    $this->state = $this->random(16);
+    $this->storeState($this->state);
+    $params = array(
+      'client_id' => $this->appId,
+      'redirect_uri' => $this->redirectUrl,
+      'state' => $this->state,
+      'sdk' => 'php-sdk-' . FacebookRequest::VERSION,
+      'auth_type' => 'rerequest',
+      'scope' => implode(',', $scope)
+    );
+    return 'https://www.facebook.com/' . $version . '/dialog/oauth?' .
+      http_build_query($params, null, '&');
   }
 
   /**
@@ -107,14 +149,21 @@ class FacebookRedirectLoginHelper
    *   a successful logout
    *
    * @return string
+   *
+   * @throws FacebookSDKException
    */
-  public function getLogoutUrl($session, $next)
+  public function getLogoutUrl(FacebookSession $session, $next)
   {
+    if ($session->getAccessToken()->isAppSession()) {
+      throw new FacebookSDKException(
+        'Cannot generate a Logout URL with an App Session.', 722
+      );
+    }
     $params = array(
       'next' => $next,
       'access_token' => $session->getToken()
     );
-    return 'https://www.facebook.com/logout.php?' . http_build_query($params);
+    return 'https://www.facebook.com/logout.php?' . http_build_query($params, null, '&');
   }
 
   /**
@@ -125,15 +174,13 @@ class FacebookRedirectLoginHelper
    */
   public function getSessionFromRedirect()
   {
-    $this->loadState();
-    if (isset($_GET['code']) && isset($_GET['state'])
-        && $_GET['state'] == $this->state) {
+    if ($this->isValidRedirect()) {
       $params = array(
         'client_id' => FacebookSession::_getTargetAppId($this->appId),
         'redirect_uri' => $this->redirectUrl,
         'client_secret' =>
           FacebookSession::_getTargetAppSecret($this->appSecret),
-        'code' => $_GET['code']
+        'code' => $this->getCode()
       );
       $response = (new FacebookRequest(
         FacebookSession::newAppSession($this->appId, $this->appSecret),
@@ -141,11 +188,54 @@ class FacebookRedirectLoginHelper
         '/oauth/access_token',
         $params
       ))->execute()->getResponse();
-      if (isset($response['access_token'])) {
-        return new FacebookSession($response['access_token']);
+
+      // Graph v2.3 and greater return objects on the /oauth/access_token endpoint
+      $accessToken = null;
+      if (is_object($response) && isset($response->access_token)) {
+        $accessToken = $response->access_token;
+      } elseif (is_array($response) && isset($response['access_token'])) {
+        $accessToken = $response['access_token'];
+      }
+
+      if (isset($accessToken)) {
+        return new FacebookSession($accessToken);
       }
     }
     return null;
+  }
+
+  /**
+   * Check if a redirect has a valid state.
+   *
+   * @return bool
+   */
+  protected function isValidRedirect()
+  {
+    $savedState = $this->loadState();
+    if (!$this->getCode() || !isset($_GET['state'])) {
+      return false;
+    }
+    $givenState = $_GET['state'];
+    $savedLen = mb_strlen($savedState);
+    $givenLen = mb_strlen($givenState);
+    if ($savedLen !== $givenLen) {
+      return false;
+    }
+    $result = 0;
+    for ($i = 0; $i < $savedLen; $i++) {
+      $result |= ord($savedState[$i]) ^ ord($givenState[$i]);
+    }
+    return $result === 0;
+  }
+
+  /**
+   * Return the code.
+   *
+   * @return string|null
+   */
+  protected function getCode()
+  {
+    return isset($_GET['code']) ? $_GET['code'] : null;
   }
 
   /**
@@ -153,14 +243,16 @@ class FacebookRedirectLoginHelper
    * Developers should subclass and override this method if they want to store
    *   this state in a different location.
    *
-   * @throws FacebookSDKException
    * @param string $state
+   *
+   * @throws FacebookSDKException
    */
   protected function storeState($state)
   {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if ($this->checkForSessionStatus === true
+      && session_status() !== PHP_SESSION_ACTIVE) {
       throw new FacebookSDKException(
-        'Session not active, could not store state.'
+        'Session not active, could not store state.', 720
       );
     }
     $_SESSION[$this->sessionPrefix . 'state'] = $state;
@@ -171,14 +263,16 @@ class FacebookRedirectLoginHelper
    *   null if no object exists.  Developers should subclass and override this
    *   method if they want to load the state from a different location.
    *
-   * @throws FacebookSDKException
    * @return string|null
+   *
+   * @throws FacebookSDKException
    */
   protected function loadState()
   {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
+    if ($this->checkForSessionStatus === true
+      && session_status() !== PHP_SESSION_ACTIVE) {
       throw new FacebookSDKException(
-        'Session not active, could not load state.'
+        'Session not active, could not load state.', 721
       );
     }
     if (isset($_SESSION[$this->sessionPrefix . 'state'])) {
@@ -186,6 +280,65 @@ class FacebookRedirectLoginHelper
       return $this->state;
     }
     return null;
+  }
+  
+  /**
+   * Generate a cryptographically secure pseudrandom number
+   * 
+   * @param integer $bytes - number of bytes to return
+   * 
+   * @return string
+   * 
+   * @throws FacebookSDKException
+   * 
+   * @todo Support Windows platforms
+   */
+  public function random($bytes)
+  {
+    if (!is_numeric($bytes)) {
+      throw new FacebookSDKException(
+        'random() expects an integer'
+      );
+    }
+    if ($bytes < 1) {
+      throw new FacebookSDKException(
+        'random() expects an integer greater than zero'
+      );
+    }
+    $buf = '';
+    // http://sockpuppet.org/blog/2014/02/25/safely-generate-random-numbers/
+    if (!ini_get('open_basedir')
+      && is_readable('/dev/urandom')) {
+      $fp = fopen('/dev/urandom', 'rb');
+      if ($fp !== FALSE) {
+        $buf = fread($fp, $bytes);
+        fclose($fp);
+        if($buf !== FALSE) {
+          return bin2hex($buf);
+        }
+      }
+    }
+
+    if (function_exists('mcrypt_create_iv')) {
+        $buf = mcrypt_create_iv($bytes, MCRYPT_DEV_URANDOM);
+        if ($buf !== FALSE) {
+          return bin2hex($buf);
+        }
+    }
+    
+    while (strlen($buf) < $bytes) {
+      $buf .= md5(uniqid(mt_rand(), true), true); 
+      // We are appending raw binary
+    }
+    return bin2hex(substr($buf, 0, $bytes));
+  }
+
+  /**
+   * Disables the session_status() check when using $_SESSION
+   */
+  public function disableSessionStatusCheck()
+  {
+    $this->checkForSessionStatus = false;
   }
 
 }

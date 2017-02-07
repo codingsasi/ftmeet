@@ -48,17 +48,31 @@ class FacebookResponse
   private $rawResponse;
 
   /**
+   * @var bool Indicates whether sent ETag matched the one on the FB side
+   */
+  private $etagHit;
+
+  /**
+   * @var string ETag received with the response. `null` in case of ETag hit.
+   */
+  private $etag;
+
+  /**
    * Creates a FacebookResponse object for a given request and response.
    *
    * @param FacebookRequest $request
    * @param array $responseData JSON Decoded response data
    * @param string $rawResponse Raw string response
+   * @param bool $etagHit Indicates whether sent ETag matched the one on the FB side
+   * @param string|null $etag ETag received with the response. `null` in case of ETag hit.
    */
-  public function __construct($request, $responseData, $rawResponse)
+  public function __construct($request, $responseData, $rawResponse, $etagHit = false, $etag = null)
   {
     $this->request = $request;
     $this->responseData = $responseData;
     $this->rawResponse = $rawResponse;
+    $this->etagHit = $etagHit;
+    $this->etag = $etag;
   }
 
   /**
@@ -92,6 +106,26 @@ class FacebookResponse
   }
 
   /**
+   * Returns true if ETag matched the one sent with a request
+   *
+   * @return bool
+   */
+  public function isETagHit()
+  {
+    return $this->etagHit;
+  }
+
+  /**
+   * Returns the ETag
+   *
+   * @return string
+   */
+  public function getETag()
+  {
+    return $this->etag;
+  }
+
+  /**
    * Gets the result as a GraphObject.  If a type is specified, returns the
    *   strongly-typed subclass of GraphObject for the data.
    *
@@ -114,7 +148,8 @@ class FacebookResponse
   public function getGraphObjectList($type = 'Facebook\GraphObject') {
     $out = array();
     $data = $this->responseData->data;
-    for ($i = 0; $i < count($data); $i++) {
+    $dataLength = count($data);
+    for ($i = 0; $i < $dataLength; $i++) {
       $out[] = (new GraphObject($data[$i]))->cast($type);
     }
     return $out;
@@ -142,14 +177,26 @@ class FacebookResponse
     return $this->handlePagination('previous');
   }
 
+  /**
+   * Returns the FacebookRequest for the previous or next page, or null.
+   *
+   * @param string $direction
+   *
+   * @return FacebookRequest|null
+   */
   private function handlePagination($direction) {
-    if (isset($this->responseData['pagination'][$direction])) {
-      $url = parse_url($this->responseData['pagination'][$direction]);
+    if (isset($this->responseData->paging->$direction)) {
+      $url = parse_url($this->responseData->paging->$direction);
+      parse_str($url['query'], $params);
+
+      if (isset($params['type']) && strpos($this->request->getPath(), $params['type']) !== false){
+        unset($params['type']);
+      }
       return new FacebookRequest(
         $this->request->getSession(),
         $this->request->getMethod(),
-        $url['path'],
-        $this->request->getParameters()
+        $this->request->getPath(),
+        $params
       );
     } else {
       return null;

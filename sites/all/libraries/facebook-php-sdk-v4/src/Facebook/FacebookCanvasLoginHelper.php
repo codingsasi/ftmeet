@@ -29,39 +29,32 @@ namespace Facebook;
  * @author Fosco Marotto <fjm@fb.com>
  * @author David Poll <depoll@fb.com>
  */
-class FacebookCanvasLoginHelper
+class FacebookCanvasLoginHelper extends FacebookSignedRequestFromInputHelper
 {
 
   /**
-   * Gets a FacebookSession from the parameters passed by Facebook to a
-   *   Canvas POST request.
+   * Returns the app data value.
    *
-   * @return FacebookSession
+   * @return mixed|null
    */
-  public function getSession()
+  public function getAppData()
   {
+    return $this->signedRequest ? $this->signedRequest->get('app_data') : null;
+  }
 
-    /**
-     * v2.0 apps use GET for Canvas signed requests.
-     */
-    if (isset($_GET['signed_request'])) {
-      return FacebookSession::newSessionFromSignedRequest(
-        $_GET['signed_request']
-      );
-    }
-
-    /**
-     * v1.0 apps use POST for Canvas signed requests, will eventually be
-     * deprecated.
-     */
-    if (isset($_POST['signed_request'])) {
-      return FacebookSession::newSessionFromSignedRequest(
-        $_POST['signed_request']
-      );
+  /**
+   * Get raw signed request from POST.
+   *
+   * @return string|null
+   */
+  public function getRawSignedRequest()
+  {
+    $rawSignedRequest = $this->getRawSignedRequestFromPost();
+    if ($rawSignedRequest) {
+      return $rawSignedRequest;
     }
 
     return null;
-
   }
 
 }

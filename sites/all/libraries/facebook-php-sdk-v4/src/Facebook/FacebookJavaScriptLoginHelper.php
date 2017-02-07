@@ -29,40 +29,17 @@ namespace Facebook;
  * @author Fosco Marotto <fjm@fb.com>
  * @author David Poll <depoll@fb.com>
  */
-class FacebookJavaScriptLoginHelper
+class FacebookJavaScriptLoginHelper extends FacebookSignedRequestFromInputHelper
 {
 
-  private $appId;
-
   /**
-   * Creates a JavaScript Login Helper for the given application id, or the
-   *   default if not provided.
-   */
-  public function __construct($appId = null)
-  {
-    $this->appId = FacebookSession::_getTargetAppId($appId);
-    if (!$this->appId) {
-      throw new FacebookSDKException(
-        'You must provide or set a default application id.'
-      );
-    }
-  }
-
-  /**
-   * Gets a FacebookSession from the cookies/params set by the Facebook
-   *   JavaScript SDK.
+   * Get raw signed request from the cookie.
    *
-   * @return FacebookSession|null
+   * @return string|null
    */
-  public function getSession()
+  public function getRawSignedRequest()
   {
-    $cookieName = 'fbsr_' . $this->appId;
-    if (isset($_COOKIE[$cookieName])) {
-      return FacebookSession::newSessionFromSignedRequest(
-        $_COOKIE[$cookieName]
-      );
-    }
-    return null;
+    return $this->getRawSignedRequestFromCookie();
   }
 
 }

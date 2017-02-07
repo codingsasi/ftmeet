@@ -50,7 +50,11 @@ class GraphObject
     $this->backingData = $raw;
 
     if (isset($this->backingData['data']) && count($this->backingData) === 1) {
-      $this->backingData = $this->backingData['data'];
+      if ($this->backingData['data'] instanceof \stdClass) {
+        $this->backingData = get_object_vars($this->backingData['data']);
+      } else {
+        $this->backingData = $this->backingData['data'];
+      }
     }
   }
 
@@ -61,6 +65,8 @@ class GraphObject
    * @param string $type The GraphObject subclass to cast to
    *
    * @return GraphObject
+   *
+   * @throws FacebookSDKException
    */
   public function cast($type)
   {
@@ -71,7 +77,7 @@ class GraphObject
       return new $type($this->backingData);
     } else {
       throw new FacebookSDKException(
-        'Cannot cast to an object that is not a GraphObject subclass'
+        'Cannot cast to an object that is not a GraphObject subclass', 620
       );
     }
   }

@@ -1,21 +1,22 @@
 <?php
 
+use Mockery as m;
 use Facebook\FacebookSession;
 use Facebook\GraphSessionInfo;
 
 class FacebookSessionTest extends PHPUnit_Framework_TestCase
 {
 
-  public static function setUpBeforeClass()
+  public function tearDown()
   {
-    FacebookTestHelper::setUpBeforeClass();
+    m::close();
   }
 
   public function testSessionToken()
   {
-    $session = new FacebookSession(FacebookTestCredentials::$appToken);
+    $session = new FacebookSession(FacebookTestHelper::getAppToken());
     $this->assertEquals(
-      FacebookTestCredentials::$appToken, $session->getToken()
+      FacebookTestHelper::getAppToken(), $session->getToken()
     );
   }
 
@@ -27,7 +28,7 @@ class FacebookSessionTest extends PHPUnit_Framework_TestCase
     $this->assertTrue($response->isValid());
     $scopes = $response->getPropertyAsArray('scopes');
     $this->assertTrue(is_array($scopes));
-    $this->assertEquals(4, count($scopes));
+    $this->assertEquals(5, count($scopes));
   }
 
   public function testExtendAccessToken()
@@ -43,32 +44,41 @@ class FacebookSessionTest extends PHPUnit_Framework_TestCase
 
   public function testSessionFromSignedRequest()
   {
-    $data = array(
-      'user_id' => 4,
-      'oauth_token' => 'fjm',
-      'state' => 'wow'
-    );
-    $signedRequest = self::makeSignedRequest($data);
+    $signedRequest = m::mock('Facebook\Entities\SignedRequest');
+    $signedRequest
+      ->shouldReceive('get')
+      ->with('code')
+      ->once()
+      ->andReturn(null);
+    $signedRequest
+      ->shouldReceive('get')
+      ->with('oauth_token')
+      ->once()
+      ->andReturn('foo_token');
+    $signedRequest
+      ->shouldReceive('get')
+      ->with('expires', 0)
+      ->once()
+      ->andReturn(time() + (60 * 60 * 24));
+    $signedRequest
+      ->shouldReceive('getUserId')
+      ->once()
+      ->andReturn('123');
 
-    $session = FacebookSession::newSessionFromSignedRequest(
-      $signedRequest, 'wow'
-    );
-    $this->assertTrue($session instanceof FacebookSession);
-    $this->assertEquals('fjm', $session->getToken());
+    $session = FacebookSession::newSessionFromSignedRequest($signedRequest);
+    $this->assertInstanceOf('Facebook\FacebookSession', $session);
+    $this->assertEquals('foo_token', $session->getToken());
+    $this->assertEquals('123', $session->getUserId());
   }
 
-  public static function makeSignedRequest($data)
+  public function testAppSessionValidates()
   {
-    if (!is_array($data)) {
-      throw new Exception('Invalid data.');
+    $session = FacebookSession::newAppSession();
+    try {
+      $session->validate();
+    } catch (\Facebook\FacebookSDKException $ex) {
+      $this->fail('Exception thrown validating app session.');
     }
-    $data['algorithm'] = 'HMAC-SHA256';
-    $data['issued_at'] = time();
-    $base64data = base64_encode(json_encode($data));
-    $rawSig = hash_hmac('sha256', $base64data,
-      FacebookTestCredentials::$appSecret, true);
-    $sig = base64_encode($rawSig);
-    return $sig.'.'.$base64data;
   }
-
+  
 }
