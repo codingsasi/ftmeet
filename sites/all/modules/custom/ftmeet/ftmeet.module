@@ -197,7 +197,7 @@ function ftmeet_user_login($account) {
   $user = user_load($account['uid']);
   $profile = profile2_create(array('type' => 'main', 'uid' => $account['uid']));
   $profile->field_full_name[LANGUAGE_NONE][0]['value'] = $user->name;
-  $user->name = trim($user->name);
+  $user->name = str_replace(' ', '', $user->name);
   $user->name = strtolower(($user->name));
   user_save($user);
   $image = file_get_contents($user->picture->uri);
