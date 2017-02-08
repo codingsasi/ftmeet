@@ -232,7 +232,7 @@ function simple_fb_connect_initialize() {
 
   // Check that Facebook PHP SDK is properly installed and that the version is 4.0.x.
   $sdk = libraries_detect('facebook-php-sdk-v4');
-  /*if (!is_array($sdk) || !$sdk['installed'] || $sdk['version'] < '4.0' || $sdk['version'] >= '4.1') {
+  if (!is_array($sdk) || !$sdk['installed'] || $sdk['version'] < '4.0' || $sdk['version'] >= '4.1') {
     drupal_set_message(t('Facebook PHP SDK not properly installed.'), 'error');
     watchdog(
       'simple_fb_connect',
@@ -241,7 +241,7 @@ function simple_fb_connect_initialize() {
       WATCHDOG_ERROR
     );
     return FALSE;
-  }*/
+  }
 
   // Check that the module is configured properly.
   $app_id = variable_get('simple_fb_connect_appid', 0);
@@ -625,7 +625,6 @@ function simple_fb_connect_create_user(GraphObject $fb_profile, FacebookSession 
 
     // Make sure username will be unique.
     $drupal_username_generated = simple_fb_connect_unique_user_name($real_name);
-    $drupal_username_generated = strtolower(trim($drupal_username_generated));
     if ($drupal_username_generated === FALSE) {
       watchdog(
         'simple_fb_connect',
