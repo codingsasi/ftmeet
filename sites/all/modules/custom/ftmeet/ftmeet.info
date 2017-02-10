@@ -6,4 +6,3 @@ configure = admin/config/administration/ftmeet
 
 ; Always available CSS
 stylesheets[all][] = css/ftmeet.css
-

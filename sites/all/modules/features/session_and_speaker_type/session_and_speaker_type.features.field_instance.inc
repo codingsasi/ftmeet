@@ -193,8 +193,8 @@ function session_and_speaker_type_field_default_field_instances() {
       'file_directory' => '',
       'file_extensions' => 'png gif jpg jpeg',
       'max_filesize' => '10 MB',
-      'max_resolution' => '1366x768',
-      'min_resolution' => '640x360',
+      'max_resolution' => '3840x2160',
+      'min_resolution' => '640x640',
       'title_field' => 1,
       'user_register_form' => FALSE,
     ),
@@ -311,7 +311,7 @@ function session_and_speaker_type_field_default_field_instances() {
     'label' => 'Description',
     'required' => 0,
     'settings' => array(
-      'text_processing' => 0,
+      'text_processing' => 1,
       'user_register_form' => FALSE,
     ),
     'widget' => array(
@@ -433,7 +433,7 @@ function session_and_speaker_type_field_default_field_instances() {
     'required' => 0,
     'settings' => array(
       'alt_field' => 1,
-      'default_image' => 0,
+      'default_image' => 70,
       'file_directory' => '',
       'file_extensions' => 'png gif jpg jpeg',
       'max_filesize' => '10 MB',
@@ -451,6 +451,40 @@ function session_and_speaker_type_field_default_field_instances() {
       ),
       'type' => 'image_image',
       'weight' => 7,
+    ),
+  );
+
+  // Exported field_instance: 'user-user-field_full_name'.
+  $field_instances['user-user-field_full_name'] = array(
+    'bundle' => 'user',
+    'default_value' => NULL,
+    'deleted' => 0,
+    'description' => '',
+    'display' => array(
+      'default' => array(
+        'label' => 'above',
+        'module' => 'text',
+        'settings' => array(),
+        'type' => 'text_default',
+        'weight' => 0,
+      ),
+    ),
+    'entity_type' => 'user',
+    'field_name' => 'field_full_name',
+    'label' => 'Full Name',
+    'required' => 0,
+    'settings' => array(
+      'text_processing' => 0,
+      'user_register_form' => 0,
+    ),
+    'widget' => array(
+      'active' => 1,
+      'module' => 'text',
+      'settings' => array(
+        'size' => 100,
+      ),
+      'type' => 'text_textfield',
+      'weight' => 12,
     ),
   );
 
