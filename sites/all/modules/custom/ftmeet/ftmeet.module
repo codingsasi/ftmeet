@@ -200,8 +200,10 @@ function ftmeet_user_login($account) {
   $user->name = str_replace(' ', '', $user->name);
   $user->name = strtolower(($user->name));
   user_save($user);
-  $image = file_get_contents($user->picture->uri);
-  $file = file_save_data($image, '', FILE_EXISTS_RENAME);
-  $profile->field_profile_image[LANGUAGE_NONE][0] = (array)$file;
+  if (isset($user->picture->uri)) {
+    $image = file_get_contents($user->picture->uri);
+    $file = file_save_data($image, '', FILE_EXISTS_RENAME);
+    $profile->field_profile_image[LANGUAGE_NONE][0] = (array)$file;
+  }
   profile2_save($profile);
 }
