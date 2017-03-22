@@ -182,12 +182,17 @@ function ftmeet_preprocess_node(&$variables) {
  */
 function ftmeet_page_alter(&$page) {
   global $user;
+  global $is_front;
   $arg0 = arg(0);
   $arg1 = arg(1);
   $arg2 = arg(2);
   if ($arg0 == 'user' && is_numeric($arg1) && $arg2 == '') {
     drupal_goto('profile/' . $user->uid);
   }
+  if (drupal_is_front_page()) {
+    drupal_set_title('Freethinkers Meet | Dare to think');
+  }
+
 }
 
 /**
